@@ -3,6 +3,7 @@ package org.example;
 import javafx.application.Application;
 
 
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.collections.FXCollections;
@@ -16,7 +17,8 @@ import javafx.stage.Stage;
 import org.example.entity.Song;
 import org.example.service.SongService;
 
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class HelloFX extends Application {
@@ -24,11 +26,19 @@ public class HelloFX extends Application {
     private ObservableList<Song> observableList;
     private ListView<Song> listView;
 
+    ExecutorService executors = Executors.newSingleThreadExecutor();
     private SongService songService;
     private TextField songName;
     private TextField artistName;
     private Button addButton;
     private Button deleteButton;
+
+    @Override
+    public void stop() throws Exception {
+        super.stop();
+        executors.shutdown();
+    }
+
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -112,10 +122,40 @@ public class HelloFX extends Application {
         // gor textfaltet tomma efter inlagg
         songName.setText("");
         artistName.setText("");
-        //Spara i databasen
-        songService.saveSong(song);
-        //Uppdatera listView från Databasen
-        observableList.clear();
-        observableList.addAll(songService.queryForSongs());
+
+
+        executors.submit(() -> {
+
+            try {
+                //long running task, network not responding
+                Thread.sleep(5000);
+                //Spara i databasen
+                songService.saveSong(song);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+
+            }
+            Platform.runLater(() -> {
+
+                // kör med platform för att uppdatera
+                //Uppdatera listView från Databasen
+                observableList.clear();
+                observableList.addAll(songService.queryForSongs());
+
+            });
+
+
+
+
+            });
+
+
+
+
+
     }
-}
+
+
+
+    }
